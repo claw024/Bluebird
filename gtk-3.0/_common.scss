@@ -6,6 +6,7 @@ $ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
 $asset_suffix: if($variant=='dark', '-dark', '');
 $backdrop_transition: 200ms ease-out;
 $button_transition: all 200ms $ease-out-quad;
+$button_radius: 3px;
 
 * {
   padding: 0;
@@ -40,6 +41,7 @@ $button_transition: all 200ms $ease-out-quad;
   -gtk-secondary-caret-color: $selected_bg_color
 }
 
+selection { @extend %selected_items; }
 
 /***************
  * Base States *
@@ -63,7 +65,12 @@ $button_transition: all 200ms $ease-out-quad;
    Everytime a wildcard is used a kitten dies, painfully.
 */
 
-*:disabled { -gtk-icon-effect: dim; }
+spinner:disabled,
+arrow:disabled,
+scrollbar:disabled,
+check:disabled,
+radio:disabled,
+treeview.expander:disabled { -gtk-icon-effect: dim; }
 
 .gtkstyle-fallback {
   color: $fg_color;
@@ -349,6 +356,10 @@ entry {
   .linked:not(.vertical) > &:focus + button,
   .linked:not(.vertical) > &:focus + combobox > box > button.combo { border-left-color: entry_focus_border(); }
 
+  .linked:not(.vertical) > &:focus.error + &,
+  .linked:not(.vertical) > &:focus.error + button,
+  .linked:not(.vertical) > &:focus.error + combobox > box > button.combo { border-left-color: entry_focus_border($error_color); }
+
   .linked:not(.vertical) > &:drop(active) + &,
   .linked:not(.vertical) > &:drop(active) + button,
   .linked:not(.vertical) > &:drop(active) + combobox > box > button.combo { border-left-color: $drop_target_color; }
@@ -379,6 +390,9 @@ entry {
     + %entry:focus:not(:only-child),
     + entry:focus:not(:only-child) { border-top-color: entry_focus_border(); }
 
+    + %entry:focus.error:not(:only-child),
+    + entry:focus.error:not(:only-child) { border-top-color: entry_focus_border($error_color); }
+
     + %entry:drop(active):not(:only-child),
     + entry:drop(active):not(:only-child) { border-top-color: $drop_target_color; }
 
@@ -389,6 +403,13 @@ entry {
       + entry,
       + button,
       + combobox > box > button.combo { border-top-color: entry_focus_border(); }
+    }
+
+    &:focus.error:not(:only-child) {
+      + %entry,
+      + entry,
+      + button,
+      + combobox > box > button.combo { border-top-color: entry_focus_border($error_color); }
     }
 
     &:drop(active):not(:only-child) {
@@ -447,7 +468,7 @@ button {
   @at-root %button_basic, & {
 
     min-height: 24px;
-    min-width: 16px;
+    min-width: 22px;
     padding: 1px 2px;
     border: 1px solid;
     border-radius: 3px;
@@ -755,17 +776,16 @@ button {
 
   .primary-toolbar & { -gtk-icon-shadow: none; } // tango icons don't need shadows
 
-  .linked > &,
-  .linked > &:hover,
-  .linked > &:active,
-  .linked > &:checked,
-  .linked > &:backdrop { @extend %linked; }
+  .linked:not(.vertical) > & { @extend %linked; }
 
-  .linked.vertical > &,
-  .linked.vertical > &:hover,
-  .linked.vertical > &:active,
-  .linked.vertical > &:checked,
-  .linked.vertical > &:backdrop { @extend %linked_vertical; }
+  .linked.vertical > & { @extend %linked_vertical; }
+
+  &.circular { // The Bloody Circul Button
+    border-radius: 9999px;
+    -gtk-outline-radius: 9999px;
+
+    label { padding: 0; }
+  }
 }
 
 %needs_attention {
@@ -833,65 +853,104 @@ button {
 }
 
 // More inline toolbar buttons
-toolbar.inline-toolbar toolbutton,
-toolbar.inline-toolbar toolbutton:backdrop {
+toolbar.inline-toolbar toolbutton {
   > button.flat { @extend %linked_middle; }
 
-  &:first-child > button.flat { @extend %linked:first-child; }
+  &:first-child > button.flat { @extend %linked_left; }
 
-  &:last-child > button.flat { @extend %linked:last-child; }
+  &:last-child > button.flat { @extend %linked_right; }
 
-  &:only-child > button.flat { @extend %linked:only-child; }
+  &:only-child > button.flat { @extend %linked_only_child; }
 }
 
 %linked_middle {
-  border-radius: 0;
   border-right-style: none;
+  border-radius: 0;
+  -gtk-outline-radius: 0;
+}
+
+%linked_left {
+    border-top-left-radius: $button_radius;
+    border-bottom-left-radius: $button_radius;
+    -gtk-outline-top-left-radius: $button_radius;
+    -gtk-outline-bottom-left-radius: $button_radius;
+}
+
+%linked_right {
+    border-right-style: solid;
+    border-top-right-radius: $button_radius;
+    border-bottom-right-radius: $button_radius;
+    -gtk-outline-top-right-radius: $button_radius;
+    -gtk-outline-bottom-right-radius: $button_radius;
+}
+
+%linked_only_child {
+    border-style: solid;
+    border-radius: $button_radius;
+    -gtk-outline-radius: $button_radius;
 }
 
 %linked {
   @extend %linked_middle;
 
-  &:first-child {
-    border-top-left-radius: 3px;
-    border-bottom-left-radius: 3px;
+  &:first-child { @extend %linked_left; }
+  &:last-child { @extend %linked_right; }
+
+  &:only-child { @extend %linked_only_child; }
+}
+
+// Other widgets use widget child order, so 1st/last child are at text start/end
+%linked_flippable {
+  @extend %linked_middle;
+
+  &:dir(ltr) {
+    &:first-child { @extend %linked_left; }
+    &:last-child { @extend %linked_right; }
   }
 
-  &:last-child {
-    border-top-right-radius: 3px;
-    border-bottom-right-radius: 3px;
-    border-right-style: solid;
+  &:dir(rtl) {
+    &:first-child { @extend %linked_right; }
+    &:last-child { @extend %linked_left; }
   }
 
-  &:only-child {
-    border-radius: 3px;
-    border-style: solid;
-  }
+  &:only-child { @extend %linked_only_child; }
 }
 
 %linked_vertical_middle {
   border-style: solid solid none solid;
   border-radius: 0;
+  -gtk-outline-radius: 0;
+}
+
+%linked_vertical_top {
+  border-top-left-radius: $button_radius;
+  border-top-right-radius: $button_radius;
+  -gtk-outline-top-left-radius: $button_radius;
+  -gtk-outline-top-right-radius: $button_radius;
+}
+
+%linked_vertical_bottom {
+  border-bottom-style: solid;
+  border-bottom-left-radius: $button_radius;
+  border-bottom-right-radius: $button_radius;
+  -gtk-outline-bottom-left-radius: $button_radius;
+  -gtk-outline-bottom-right-radius: $button_radius;
+}
+
+%linked_vertical_only_child {
+  border-style: solid;
+  border-radius: $button_radius;
+  -gtk-outline-radius: $button_radius;
 }
 
 %linked_vertical{
   @extend %linked_vertical_middle;
 
-  &:first-child {
-    border-top-left-radius: 3px;
-    border-top-right-radius: 3px;
-  }
+  &:first-child { @extend %linked_vertical_top; }
 
-  &:last-child {
-    border-bottom-left-radius: 3px;
-    border-bottom-right-radius: 3px;
-    border-style: solid;
-  }
+  &:last-child { @extend %linked_vertical_bottom; }
 
-  &:only-child {
-    border-radius: 3px;
-    border-style: solid;
-  }
+  &:only-child { @extend %linked_vertical_only_child; }
 }
 
 %undecorated_button {
@@ -917,17 +976,16 @@ modelbutton.flat,
 
   &:hover { background-color: $popover_hover_color; }
 
+  &:disabled {
+    color: $insensitive_fg_color;
+
+    &:backdrop { color: $backdrop_insensitive_color; }
+  }
+
   &:selected { @extend %selected_items; }
 
   &:backdrop,
   &:backdrop:hover { @extend %undecorated_button; }
-
-  // FIXME: remove the following when the checks/radios rewrite lands
-  check:last-child,
-  radio:last-child { margin-left: 8px; }
-
-  check:first-child,
-  radio:first-child { margin-right: 8px; }
 }
 
 modelbutton.flat arrow {
@@ -961,6 +1019,7 @@ button.color {
 /*********
  * Links *
  *********/
+%link,
 *:link {
   color: $link_color;
 
